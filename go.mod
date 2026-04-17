@@ -1,4 +1,4 @@
-module github.com/chris-pen/kitchen
+module github.com/flex1970/kitchen
 
 go 1.25.0
 
