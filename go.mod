@@ -1,4 +1,4 @@
-module github.com/flex1970/kitchen
+module github.com/cors1900/kitchen
 
 go 1.25.0
 
