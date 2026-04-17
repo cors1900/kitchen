@@ -1,4 +1,4 @@
-module github.com/chris-pen/go-base
+module github.com/chris-pen/kitchen
 
 go 1.25.0
 
