@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flex1970/kitchen/file"
+	"github.com/cors1900/kitchen/file"
 
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
