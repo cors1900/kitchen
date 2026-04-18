@@ -12,10 +12,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-type UnzipProgress func(index int, total int, filename string)
+type Progress func(index int, total int, filename string)
 
 // 将zip包的内容解压到指定目录下
-func Unzip(zipPath string, targetDir string, progress UnzipProgress) error {
+func Unzip(zipPath string, targetDir string, progress Progress) error {
 	tempDir := filepath.Clean(targetDir) + ".unzipping"
 	os.RemoveAll(tempDir)
 	archive, err := zip.OpenReader(zipPath)
@@ -68,7 +68,7 @@ func Unzip(zipPath string, targetDir string, progress UnzipProgress) error {
 
 // Zip 将指定的文件或目录压缩到 ZIP 文件
 // 如果仅指定一个目录，则将该目录内的所有内容放到压缩包内
-func Zip(target string, sources ...string) (err error) {
+func Zip(sources []string, target string, progress Progress) (err error) {
 	// 1. 创建 ZIP 文件
 	var zipFile *os.File
 	if zipFile, err = os.Create(target); err != nil {
@@ -82,6 +82,9 @@ func Zip(target string, sources ...string) (err error) {
 		}
 	}()
 
+	var total int64
+	var index int64
+
 	// 2. 初始化 zip.Writer
 	writer := zip.NewWriter(zipFile)
 	defer writer.Close()
@@ -90,6 +93,11 @@ func Zip(target string, sources ...string) (err error) {
 		if info.IsDir() {
 			return nil
 		}
+
+		if progress != nil {
+			progress(int(index), int(total), archivePath)
+		}
+
 		// 4. 创建 ZIP 文件头（保留文件权限）
 		header, err := zip.FileInfoHeader(info)
 		if err != nil {
@@ -126,6 +134,8 @@ func Zip(target string, sources ...string) (err error) {
 				return errors.WithStack(err)
 			}
 
+			index++
+
 			// 跳过目录（ZIP 会自动处理目录结构）
 			if info.IsDir() {
 				return nil
@@ -149,10 +159,25 @@ func Zip(target string, sources ...string) (err error) {
 	}
 
 	if len(sources) == 1 && file.IsDir(sources[0]) {
+		total, _ = file.CountDirAndFile(sources[0])
+
 		if err = addDirToZip(sources[0], "", writer); err != nil {
 			return errors.WithStack(err)
 		}
 		return nil
+	}
+
+	for _, source := range sources {
+		if source == "" {
+			continue
+		}
+
+		if file.IsDir(source) {
+			n, _ := file.CountDirAndFile(source)
+			total += n
+			continue
+		}
+		total++
 	}
 
 	for _, source := range sources {
@@ -172,6 +197,8 @@ func Zip(target string, sources ...string) (err error) {
 		if err != nil {
 			return errors.WithStack(err)
 		}
+		index++
+
 		if err = addFileToZip(source,
 			filepath.Base(source), info, writer); err != nil {
 			return errors.WithStack(err)
