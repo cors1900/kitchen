@@ -170,6 +170,8 @@ func (p *ProgressBar) render() {
 	}
 	if p.showSize {
 		info = append(info, p.sizeString())
+	} else {
+		info = append(info, fmt.Sprintf("%d/%d", p.current, p.total))
 	}
 
 	elapsed := time.Since(p.startTime).Seconds()
