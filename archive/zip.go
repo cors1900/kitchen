@@ -173,7 +173,7 @@ func Zip(target string, sources ...string) (err error) {
 			return errors.WithStack(err)
 		}
 		if err = addFileToZip(source,
-			source, info, writer); err != nil {
+			filepath.Base(source), info, writer); err != nil {
 			return errors.WithStack(err)
 		}
 	}

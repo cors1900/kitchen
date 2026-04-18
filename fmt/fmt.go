@@ -17,6 +17,8 @@ import (
 var Sprintf = fmt.Sprintf
 var Printf = fmt.Printf
 var Sscanf = fmt.Sscanf
+var Scanln = fmt.Scanln
+var Scanf = fmt.Scanf
 
 var appName = "app"
 
