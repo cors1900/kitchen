@@ -12,6 +12,7 @@ import (
 )
 
 type ProgressBar struct {
+	lock      sync.Mutex
 	startTime time.Time
 	taskName  string
 
@@ -47,9 +48,9 @@ func WithFinishMsg(msg string, args ...any) Option {
 
 type Option func(*ProgressBar)
 
-func NewProgressBar(taskName string, opts ...Option) *ProgressBar {
+func NewProgressBar(name string, opts ...Option) *ProgressBar {
 	p := &ProgressBar{
-		taskName:    taskName,
+		taskName:    name,
 		startTime:   time.Now(),
 		autoWidth:   true, // 默认自适应
 		showPercent: true,
@@ -77,7 +78,9 @@ func (p *ProgressBar) start() {
 			case <-p.stop:
 				return
 			case <-ticker.C:
-				// 获取当前符号
+				p.lock.Lock()
+				defer p.lock.Unlock()
+
 				p.symbolIndex = (p.symbolIndex + 1) % len(p.symbols)
 				p.render()
 				if p.current >= p.total {
@@ -104,8 +107,22 @@ func (p *ProgressBar) Stop() {
 	p.wg.Wait()
 }
 
+func (p *ProgressBar) SetName(name string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	p.taskName = name
+}
+
+func (p *ProgressBar) Name() string {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	return p.taskName
+}
+
 func (p *ProgressBar) Update(current int64, total int64) bool {
-	// close(p.stop)
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	p.current = current
 	if total <= 0 {
 		total = 1

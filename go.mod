@@ -7,6 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/pkg/errors v0.9.1
 	golang.org/x/term v0.42.0
+	golang.org/x/text v0.34.0
 	resty.dev/v3 v3.0.0-beta.6
 )
 
@@ -39,6 +40,5 @@ require (
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )

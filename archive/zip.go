@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Progress func(index int, total int, filename string)
+type Progress func(index int64, total int64, filename string)
 
 // 将zip包的内容解压到指定目录下
 func Unzip(zipPath string, targetDir string, progress Progress) error {
@@ -28,7 +28,7 @@ func Unzip(zipPath string, targetDir string, progress Progress) error {
 	count := len(archive.File)
 	for index, f := range archive.File {
 		if progress != nil {
-			progress(index, count, f.Name)
+			progress(int64(index), int64(count), f.Name)
 		}
 		filePath := filepath.Join(tempDir, f.Name)
 		if !strings.HasPrefix(filePath, tempDir+string(os.PathSeparator)) {
@@ -95,7 +95,7 @@ func Zip(sources []string, target string, progress Progress) (err error) {
 		}
 
 		if progress != nil {
-			progress(int(index), int(total), archivePath)
+			progress(index, total, archivePath)
 		}
 
 		// 4. 创建 ZIP 文件头（保留文件权限）
