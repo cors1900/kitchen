@@ -69,9 +69,6 @@ func Unzip(zipPath string, targetDir string, progress UnzipProgress) error {
 // Zip 将指定的文件或目录压缩到 ZIP 文件
 // 如果仅指定一个目录，则将该目录内的所有内容放到压缩包内
 func Zip(target string, sources ...string) (err error) {
-	if len(sources) == 0 {
-		return errors.New("no any files to zip")
-	}
 	// 1. 创建 ZIP 文件
 	var zipFile *os.File
 	if zipFile, err = os.Create(target); err != nil {
@@ -159,6 +156,9 @@ func Zip(target string, sources ...string) (err error) {
 	}
 
 	for _, source := range sources {
+		if source == "" {
+			continue
+		}
 		var err error
 		if file.IsDir(source) {
 			if err = addDirToZip(source,
