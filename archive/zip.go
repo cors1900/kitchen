@@ -66,10 +66,14 @@ func Unzip(zipPath string, targetDir string, progress UnzipProgress) error {
 	return os.Rename(tempDir, targetDir)
 }
 
-// ZipDirectory 压缩目录到 ZIP 文件
-func Zip(sourceDir, targetZip string) error {
+// Zip 将指定的文件或目录压缩到 ZIP 文件
+// 如果仅指定一个目录，则将该目录内的所有内容放到压缩包内
+func Zip(target string, sources ...string) error {
+	if len(sources) == 0 {
+		return errors.New("no any files to zip")
+	}
 	// 1. 创建 ZIP 文件
-	zipFile, err := os.Create(targetZip)
+	zipFile, err := os.Create(target)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -79,29 +83,16 @@ func Zip(sourceDir, targetZip string) error {
 	writer := zip.NewWriter(zipFile)
 	defer writer.Close()
 
-	// 3. 遍历源目录
-	return filepath.Walk(sourceDir, func(filePath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		// 跳过目录（ZIP 会自动处理目录结构）
+	addFileToZip := func(sourcePath string, archivePath string, info os.FileInfo, writer *zip.Writer) error {
 		if info.IsDir() {
 			return nil
 		}
-
-		// 计算文件在 ZIP 中的相对路径（保留源目录结构）
-		relPath, err := filepath.Rel(sourceDir, filePath)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
 		// 4. 创建 ZIP 文件头（保留文件权限）
 		header, err := zip.FileInfoHeader(info)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		header.Name = relPath       // ZIP 中的文件名（相对路径）
+		header.Name = archivePath   // ZIP 中的文件名（相对路径）
 		header.Method = zip.Deflate // 使用 DEFLATE 压缩算法（默认）
 		header.SetMode(info.Mode()) // 保留文件权限
 
@@ -112,7 +103,7 @@ func Zip(sourceDir, targetZip string) error {
 		}
 
 		// 6. 复制文件内容到 ZIP
-		file, err := os.Open(filePath)
+		file, err := os.Open(sourcePath)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -123,7 +114,62 @@ func Zip(sourceDir, targetZip string) error {
 			return errors.WithStack(err)
 		}
 		return nil
-	})
+	}
+
+	addDirToZip := func(sourceDir string, archiveDir string, writer *zip.Writer) error {
+		return filepath.Walk(sourceDir, func(filePath string, info os.FileInfo, err error) error {
+			if err != nil {
+				return errors.WithStack(err)
+			}
+
+			// 跳过目录（ZIP 会自动处理目录结构）
+			if info.IsDir() {
+				return nil
+			}
+
+			// 计算文件在 ZIP 中的相对路径（保留源目录结构）
+			relPath, err := filepath.Rel(sourceDir, filePath)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+
+			// 7. 调用 addFileToZip 函数添加文件到 ZIP
+			if err := addFileToZip(
+				filePath,
+				filepath.Join(archiveDir, relPath),
+				info, writer); err != nil {
+				return errors.WithStack(err)
+			}
+			return nil
+		})
+	}
+
+	if len(sources) == 1 && file.IsDir(sources[0]) {
+		if err := addDirToZip(sources[0], "", writer); err != nil {
+			return errors.WithStack(err)
+		}
+		return nil
+	}
+
+	for _, source := range sources {
+		var err error
+		if file.IsDir(source) {
+			if err := addDirToZip(source,
+				filepath.Base(source), writer); err != nil {
+				return errors.WithStack(err)
+			}
+			continue
+		}
+		info, err := os.Stat(source)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if err := addFileToZip(source,
+			source, info, writer); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	return nil
 }
 
 func IsWindowsOS() bool {
