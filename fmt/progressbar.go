@@ -8,6 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"atomicgo.dev/cursor"
 	"golang.org/x/term"
 )
 
@@ -70,6 +71,8 @@ func NewProgressBar(name string, opts ...Option) *ProgressBar {
 func (p *ProgressBar) start() {
 	p.wg.Add(1)
 	go func() {
+		cursor.Hide()
+		defer cursor.Show()
 		defer p.wg.Done()
 		ticker := time.NewTicker(120 * time.Millisecond)
 		defer ticker.Stop()
@@ -78,13 +81,14 @@ func (p *ProgressBar) start() {
 			case <-p.stop:
 				return
 			case <-ticker.C:
-				p.lock.Lock()
-				defer p.lock.Unlock()
-
-				p.symbolIndex = (p.symbolIndex + 1) % len(p.symbols)
-				p.render()
-				if p.current >= p.total {
-					break
+				{
+					p.lock.Lock()
+					p.symbolIndex = (p.symbolIndex + 1) % len(p.symbols)
+					p.render()
+					p.lock.Unlock()
+					if p.current >= p.total {
+						break
+					}
 				}
 			}
 		}
@@ -172,7 +176,7 @@ func (p *ProgressBar) sizeString() string {
 	case "KB":
 		return fmt.Sprintf("%.1f/%.1f KB", KB(p.current), KB(p.total))
 	default:
-		return fmt.Sprintf("%d/%d Byte", p.current, p.total)
+		return fmt.Sprintf("%d/%d", p.current, p.total)
 	}
 }
 
@@ -187,8 +191,6 @@ func (p *ProgressBar) render() {
 	}
 	if p.showSize {
 		info = append(info, p.sizeString())
-	} else {
-		info = append(info, fmt.Sprintf("%d/%d", p.current, p.total))
 	}
 
 	elapsed := time.Since(p.startTime).Seconds()
@@ -205,26 +207,12 @@ func (p *ProgressBar) render() {
 
 	infoStr := strings.Join(info, " | ")
 	if p.current < p.total {
-		infoStr += " "
-		infoStr += string(p.symbols[p.symbolIndex])
+		// infoStr += " "
+		// infoStr += string(p.symbols[p.symbolIndex])
 	} else {
 		// infoStr += " "
 		// infoStr += "⣿"
 	}
-	// 2. 动态获取进度条宽度
-	// barWidth := p.getDynamicWidth(len(infoStr)) - 2
-
-	// 3. 构建进度条
-	// filledLen := int(float64(barWidth) * ratio)
-	// if filledLen > barWidth {
-	// 	filledLen = barWidth
-	// }
-	// bar := "[" + strings.Repeat("━", filledLen) +
-	// 	strings.Repeat("─", barWidth-filledLen) + "]"
-
-	// p.symbolIndex = (p.symbolIndex + 1) % len(p.symbols)
-
-	// infoStr += fmt.Sprintf(" %d", p.getTerminalWidth())
 
 	infoStr = strings.TrimSpace(infoStr)
 	infoStrLen := utf8.RuneCountInString(infoStr)
@@ -239,9 +227,9 @@ func (p *ProgressBar) render() {
 	}
 
 	// 打印进度条
-	Infof("\r%-*s%s",
+	Infof("\r%-*s%s\r",
 		nameWidth,
-		p.taskName,
+		p.taskName+"  "+string(p.symbols[p.symbolIndex]),
 		infoStr)
 
 	// [" ", "⡀", "⡄", "⡆", "⡇", "⡏", "⡟", "⡿", "⣿"]

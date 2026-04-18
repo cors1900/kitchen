@@ -20,7 +20,7 @@ var Sscanf = fmt.Sscanf
 var Scanln = fmt.Scanln
 var Scanf = fmt.Scanf
 
-var appName = "app"
+var appName = "app: "
 
 const (
 	levelFatal   = 5

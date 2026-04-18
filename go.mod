@@ -3,6 +3,7 @@ module github.com/cors1900/kitchen
 go 1.25.0
 
 require (
+	atomicgo.dev/cursor v0.2.0
 	github.com/fatih/color v1.19.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/pkg/errors v0.9.1
