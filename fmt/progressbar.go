@@ -135,12 +135,11 @@ func (p *ProgressBar) Update(current int64, total int64) bool {
 	p.render()
 	if p.current >= p.total {
 		p.Stop()
-		// p.render()
 
 		if p.finishMsg != "" {
 			Info("\r%s", p.finishMsg)
 		} else {
-			Info("\n")
+			Printf("\n")
 		}
 
 		return true
