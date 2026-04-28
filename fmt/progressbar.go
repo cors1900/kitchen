@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"atomicgo.dev/cursor"
+	"github.com/mattn/go-runewidth"
 	"golang.org/x/term"
 )
 
@@ -176,7 +176,7 @@ func (p *ProgressBar) sizeString() string {
 	case "KB":
 		return fmt.Sprintf("%.1f/%.1f KB", KB(p.current), KB(p.total))
 	default:
-		return fmt.Sprintf("%d/%d", p.current, p.total)
+		return fmt.Sprintf("%v/%v", p.current, p.total)
 	}
 }
 
@@ -187,7 +187,7 @@ func (p *ProgressBar) render() {
 	var info []string
 
 	if p.showPercent {
-		info = append(info, fmt.Sprintf("%3.0f%%", ratio*100))
+		info = append(info, fmt.Sprintf("%.0f%%", ratio*100))
 	}
 	if p.showSize {
 		info = append(info, p.sizeString())
@@ -214,28 +214,15 @@ func (p *ProgressBar) render() {
 		// infoStr += "⣿"
 	}
 
-	infoStr = strings.TrimSpace(infoStr)
-	infoStrLen := utf8.RuneCountInString(infoStr)
 	terminalWidth := p.getTerminalWidth()
+	taskNameWidth := runewidth.StringWidth(p.taskName)
+	symbolWidth := runewidth.RuneWidth(p.symbols[p.symbolIndex])
+	infoStrLen := runewidth.StringWidth(infoStr)
 
-	// 计算实际需要的宽度
-	nameWidth := terminalWidth - infoStrLen - utf8.RuneCountInString(appName)
-
-	// 确保nameWidth至少为0
-	if nameWidth <= 0 {
-		nameWidth = 1
-	}
+	padding := strings.Repeat(" ", max(0, terminalWidth-runewidth.StringWidth(appName)-symbolWidth-taskNameWidth-infoStrLen-2))
 
 	// 打印进度条
-	Infof("\r%-*s%s\r",
-		nameWidth,
-		p.taskName+"  "+string(p.symbols[p.symbolIndex]),
-		infoStr)
+	Infof("\r%c %s %s%s", p.symbols[p.symbolIndex], p.taskName, padding, infoStr)
 
 	// [" ", "⡀", "⡄", "⡆", "⡇", "⡏", "⡟", "⡿", "⣿"]
-
-	// 4. 打印
-	// fmt.Printf("\033[2K\r%-15s %s  %s", p.taskName, bar, infoStr)
 }
-
-// Setter 方法略...
