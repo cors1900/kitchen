@@ -139,11 +139,11 @@ func (p *ProgressBar) Update(current int64, total int64) bool {
 	if p.current >= p.total {
 		p.Stop()
 
-		if p.finishMsg != "" {
-			Info("\r%s", p.finishMsg)
-		} else {
-			Printf("\n")
-		}
+		// if p.finishMsg != "" {
+		// 	Info("\r%s", p.finishMsg)
+		// } else {
+		// }
+		Printf("\n")
 
 		return true
 	}
@@ -201,9 +201,14 @@ func (p *ProgressBar) render() {
 		if p.showSpeed {
 			info = append(info, fmt.Sprintf("%s/s", Size(int64(speed))))
 		}
-		if p.showETA && speed > 0 && p.current < p.total {
-			remaining := float64(p.total-p.current) / speed
-			info = append(info, fmt.Sprintf("%s", Duration(time.Duration(remaining)*time.Second)))
+		if p.showETA && speed > 0 {
+			if p.current < p.total {
+				remaining := float64(p.total-p.current) / speed
+				info = append(info, fmt.Sprintf("%s", Duration(time.Duration(remaining)*time.Second)))
+			} else {
+				info = append(info, fmt.Sprintf("%s", Duration(time.Duration(elapsed)*time.Second)))
+			}
+
 		}
 	}
 
@@ -217,7 +222,14 @@ func (p *ProgressBar) render() {
 	}
 
 	terminalWidth := p.getTerminalWidth()
-	taskNameWidth := runewidth.StringWidth(p.taskName)
+	// taskNameWidth := runewidth.StringWidth(p.taskName)
+	msg := func() string {
+		if p.current >= p.total && p.finishMsg != "" {
+			return p.finishMsg
+		}
+		return p.taskName
+	}()
+	msgWidth := runewidth.StringWidth(msg)
 	symbol := func() string {
 		if p.current < p.total {
 			return p.symbols[p.symbolIndex]
@@ -229,10 +241,10 @@ func (p *ProgressBar) render() {
 
 	infoStrLen := runewidth.StringWidth(infoStr)
 
-	padding := strings.Repeat(" ", max(0, terminalWidth-runewidth.StringWidth(appName)-symbolWidth-taskNameWidth-infoStrLen-2))
+	padding := strings.Repeat(" ", max(0, terminalWidth-runewidth.StringWidth(appName)-symbolWidth-msgWidth-infoStrLen-2))
 
 	// 打印进度条
-	Infof("\r%s %s %s%s", symbol, p.taskName, padding, infoStr)
+	Infof("\r%s %s %s%s", symbol, msg, padding, infoStr)
 
 	//✔ ✖
 	// [" ", "⡀", "⡄", "⡆", "⡇", "⡏", "⡟", "⡿", "⣿"]
