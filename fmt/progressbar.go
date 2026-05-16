@@ -33,8 +33,9 @@ type ProgressBar struct {
 	stopped bool
 	wg      sync.WaitGroup
 
-	symbols     []rune
+	symbols     []string
 	symbolIndex int
+	okSymbol    string
 }
 
 // --- Options ---
@@ -57,7 +58,9 @@ func NewProgressBar(name string, opts ...Option) *ProgressBar {
 		showPercent: true,
 		// finishMsg:   "✔ Done",
 		unit:    "MB",
-		symbols: []rune{'⢿', '⣻', '⣽', '⣾', '⣷', '⣯', '⣟', '⡿'},
+		symbols: []string{"⢿", "⣻", "⣽", "⣾", "⣷", "⣯", "⣟", "⡿"},
+		// symbols: []string{"⣎⣹", "⣇⣹", "⣏⣸", "⣏⣱", "⣏⣩", "⣏⣙", "⣏⡹", "⣏⢹", "⡏⣹", "⢏⣹", "⣋⣹", "⣍⣹"},
+		okSymbol: "✔",
 
 		stop: make(chan bool, 1),
 	}
@@ -215,13 +218,22 @@ func (p *ProgressBar) render() {
 
 	terminalWidth := p.getTerminalWidth()
 	taskNameWidth := runewidth.StringWidth(p.taskName)
-	symbolWidth := runewidth.RuneWidth(p.symbols[p.symbolIndex])
+	symbol := func() string {
+		if p.current < p.total {
+			return p.symbols[p.symbolIndex]
+		} else {
+			return p.okSymbol
+		}
+	}()
+	symbolWidth := runewidth.StringWidth(symbol)
+
 	infoStrLen := runewidth.StringWidth(infoStr)
 
 	padding := strings.Repeat(" ", max(0, terminalWidth-runewidth.StringWidth(appName)-symbolWidth-taskNameWidth-infoStrLen-2))
 
 	// 打印进度条
-	Infof("\r%c %s %s%s", p.symbols[p.symbolIndex], p.taskName, padding, infoStr)
+	Infof("\r%s %s %s%s", symbol, p.taskName, padding, infoStr)
 
+	//✔ ✖
 	// [" ", "⡀", "⡄", "⡆", "⡇", "⡏", "⡟", "⡿", "⣿"]
 }
