@@ -204,7 +204,7 @@ func (p *ProgressBar) render() {
 		if p.showETA && speed > 0 {
 			if p.current < p.total {
 				remaining := float64(p.total-p.current) / speed
-				info = append(info, fmt.Sprintf("%s", Duration(time.Duration(remaining)*time.Second)))
+				info = append(info, fmt.Sprintf("ETA %s", Duration(time.Duration(remaining)*time.Second)))
 			} else {
 				info = append(info, fmt.Sprintf("%s", Duration(time.Duration(elapsed)*time.Second)))
 			}

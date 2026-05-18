@@ -182,6 +182,7 @@ func Duration(d time.Duration) string {
 	}
 	return result
 }
+
 func Tree(dir string, prefix string, handler func(prefix, item string, isDir bool)) error {
 	inner_pointers := []string{"├──", "│  "}
 	final_pointers := []string{"└──", "   "}
