@@ -184,3 +184,15 @@ func Glob(dir string, extensions []string) ([]string, error) {
 	}
 	return list, nil
 }
+
+func ReadString(file string) (string, error) {
+	content, err := os.ReadFile(file)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return string(content), nil
+}
+
+func WriteString(file string, content string, perm os.FileMode) error {
+	return os.WriteFile(file, []byte(content), perm)
+}

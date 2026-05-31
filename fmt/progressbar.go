@@ -24,7 +24,8 @@ type ProgressBar struct {
 	showETA     bool
 	autoWidth   bool // 是否开启自适应
 	fixedWidth  int  // 手动指定的宽度
-	finishMsg   string
+	finishMsg   func(p *ProgressBar) string
+	newline     bool
 
 	current int64
 	total   int64
@@ -40,12 +41,18 @@ type ProgressBar struct {
 
 // --- Options ---
 
-func WithSize(unit string) Option { return func(p *ProgressBar) { p.showSize = true; p.unit = unit } }
-func WithSpeed() Option           { return func(p *ProgressBar) { p.showSpeed = true } }
-func WithETA() Option             { return func(p *ProgressBar) { p.showETA = true } }
-func WithWidth(w int) Option      { return func(p *ProgressBar) { p.fixedWidth = w; p.autoWidth = false } }
-func WithFinishMsg(msg string, args ...any) Option {
-	return func(p *ProgressBar) { p.finishMsg = Sprintf(msg, args...) }
+func WithSize(unit string) Option             { return func(p *ProgressBar) { p.showSize = true; p.unit = unit } }
+func WithSpeed() Option                       { return func(p *ProgressBar) { p.showSpeed = true } }
+func WithETA() Option                         { return func(p *ProgressBar) { p.showETA = true } }
+func WithWidth(w int) Option                  { return func(p *ProgressBar) { p.fixedWidth = w; p.autoWidth = false } }
+func WithNewLineOnFinish(enabled bool) Option { return func(p *ProgressBar) { p.newline = enabled } }
+
+func WithFinishMessage(msg func(p *ProgressBar) string) Option {
+	return func(p *ProgressBar) { p.finishMsg = msg }
+}
+
+func WithFinishMsg(msg string) Option {
+	return func(p *ProgressBar) { p.finishMsg = func(p *ProgressBar) string { return msg } }
 }
 
 type Option func(*ProgressBar)
@@ -56,13 +63,12 @@ func NewProgressBar(name string, opts ...Option) *ProgressBar {
 		startTime:   time.Now(),
 		autoWidth:   true, // 默认自适应
 		showPercent: true,
-		// finishMsg:   "✔ Done",
-		unit:    "MB",
-		symbols: []string{"⢿", "⣻", "⣽", "⣾", "⣷", "⣯", "⣟", "⡿"},
+		unit:        "MB",
+		symbols:     []string{"⢿", "⣻", "⣽", "⣾", "⣷", "⣯", "⣟", "⡿"},
 		// symbols: []string{"⣎⣹", "⣇⣹", "⣏⣸", "⣏⣱", "⣏⣩", "⣏⣙", "⣏⡹", "⣏⢹", "⡏⣹", "⢏⣹", "⣋⣹", "⣍⣹"},
 		okSymbol: "✔",
-
-		stop: make(chan bool, 1),
+		newline:  true,
+		stop:     make(chan bool, 1),
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -120,6 +126,10 @@ func (p *ProgressBar) SetName(name string) {
 	p.taskName = name
 }
 
+func (p *ProgressBar) Elapsed() time.Duration {
+	return time.Since(p.startTime)
+}
+
 func (p *ProgressBar) Name() string {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -131,19 +141,18 @@ func (p *ProgressBar) Update(current int64, total int64) bool {
 	defer p.lock.Unlock()
 
 	p.current = current
-	if total <= 0 {
-		total = 1
-	}
+	// if total <= 0 {
+	// 	total = 1
+	// }
 	p.total = total
 	p.render()
-	if p.current >= p.total {
+	if p.current > 0 && p.current >= p.total {
 		p.Stop()
-
-		// if p.finishMsg != "" {
-		// 	Info("\r%s", p.finishMsg)
-		// } else {
-		// }
-		Printf("\n")
+		if p.newline {
+			Printf("\n")
+		} else {
+			Clear()
+		}
 
 		return true
 	}
@@ -183,30 +192,32 @@ func (p *ProgressBar) sizeString() string {
 }
 
 func (p *ProgressBar) render() {
-	ratio := float64(p.current) / float64(p.total)
-
 	// 1. 先构建右侧信息字符串，用于计算剩余空间
 	var info []string
 
 	if p.showPercent {
-		info = append(info, fmt.Sprintf("%.0f%%", ratio*100))
+		if p.total > 0 {
+			ratio := float64(p.current) / float64(p.total)
+			info = append(info, fmt.Sprintf("%.0f%%", ratio*100))
+		}
 	}
 	if p.showSize {
 		info = append(info, p.sizeString())
 	}
 
-	elapsed := time.Since(p.startTime).Seconds()
+	elapsed := time.Since(p.startTime)
 	if elapsed > 0 {
-		speed := float64(p.current) / elapsed
+		speed := float64(p.current) / elapsed.Seconds()
 		if p.showSpeed {
 			info = append(info, fmt.Sprintf("%s/s", Size(int64(speed))))
 		}
 		if p.showETA && speed > 0 {
 			if p.current < p.total {
 				remaining := float64(p.total-p.current) / speed
-				info = append(info, fmt.Sprintf("ETA %s", Duration(time.Duration(remaining)*time.Second)))
+				info = append(info, fmt.Sprintf("ETA %s",
+					Duration(time.Duration(remaining*float64(time.Second)))))
 			} else {
-				info = append(info, fmt.Sprintf("%s", Duration(time.Duration(elapsed)*time.Second)))
+				info = append(info, fmt.Sprintf("%s", Duration(elapsed)))
 			}
 
 		}
@@ -224,8 +235,8 @@ func (p *ProgressBar) render() {
 	terminalWidth := p.getTerminalWidth()
 	// taskNameWidth := runewidth.StringWidth(p.taskName)
 	msg := func() string {
-		if p.current >= p.total && p.finishMsg != "" {
-			return p.finishMsg
+		if p.current >= p.total && p.finishMsg != nil {
+			return p.finishMsg(p)
 		}
 		return p.taskName
 	}()
