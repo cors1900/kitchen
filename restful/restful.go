@@ -206,6 +206,10 @@ func (the *Restful) SetBearer(token string) {
 	the.Resty.SetHeader("Authorization", fmt.Sprintf("Bearer %s", token))
 }
 
+func (r *Restful) GET(url string, response any) {
+	Get[any](r, url, response)
+}
+
 // GetRequestBaseURL 返回完整的请求基础地址（协议+域名）
 func GetBaseURL(c *gin.Context) string {
 	scheme := "http"
