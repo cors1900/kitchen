@@ -90,14 +90,13 @@ func (p *ProgressBar) start() {
 			case <-p.stop:
 				return
 			case <-ticker.C:
-				{
-					p.lock.Lock()
-					p.symbolIndex = (p.symbolIndex + 1) % len(p.symbols)
-					p.render()
-					p.lock.Unlock()
-					if p.current >= p.total {
-						break
-					}
+				p.lock.Lock()
+				p.symbolIndex = (p.symbolIndex + 1) % len(p.symbols)
+				line := p.renderLocked()
+				p.lock.Unlock()
+				Infof("%s", line)
+				if p.current >= p.total {
+					return
 				}
 			}
 		}
@@ -105,9 +104,13 @@ func (p *ProgressBar) start() {
 }
 
 func (p *ProgressBar) Stop() {
+	p.lock.Lock()
 	if p.stopped {
+		p.lock.Unlock()
 		return
 	}
+	p.stopped = true
+	p.lock.Unlock()
 
 	select {
 	case p.stop <- true:
@@ -116,7 +119,6 @@ func (p *ProgressBar) Stop() {
 		// 通道已满，忽略
 	}
 
-	p.stopped = true
 	p.wg.Wait()
 }
 
@@ -138,22 +140,21 @@ func (p *ProgressBar) Name() string {
 
 func (p *ProgressBar) Update(current int64, total int64) bool {
 	p.lock.Lock()
-	defer p.lock.Unlock()
-
 	p.current = current
-	// if total <= 0 {
-	// 	total = 1
-	// }
 	p.total = total
-	p.render()
-	if p.current > 0 && p.current >= p.total {
+	line := p.renderLocked()
+	finished := p.current > 0 && p.current >= p.total
+	p.lock.Unlock()
+
+	Infof("%s", line)
+
+	if finished {
 		p.Stop()
 		if p.newline {
 			Printf("\n")
 		} else {
 			Clear()
 		}
-
 		return true
 	}
 	return false
@@ -191,8 +192,8 @@ func (p *ProgressBar) sizeString() string {
 	}
 }
 
-func (p *ProgressBar) render() {
-	// 1. 先构建右侧信息字符串，用于计算剩余空间
+// renderLocked 必须在持有 p.lock 时调用，只读取状态并返回输出字符串，不执行 I/O。
+func (p *ProgressBar) renderLocked() string {
 	var info []string
 
 	if p.showPercent {
@@ -219,44 +220,32 @@ func (p *ProgressBar) render() {
 			} else {
 				info = append(info, fmt.Sprintf("%s", Duration(elapsed)))
 			}
-
 		}
 	}
 
 	infoStr := strings.Join(info, " | ")
-	if p.current < p.total {
-		// infoStr += " "
-		// infoStr += string(p.symbols[p.symbolIndex])
-	} else {
-		// infoStr += " "
-		// infoStr += "⣿"
-	}
 
 	terminalWidth := p.getTerminalWidth()
-	// taskNameWidth := runewidth.StringWidth(p.taskName)
-	msg := func() string {
-		if p.current >= p.total && p.finishMsg != nil {
-			return p.finishMsg(p)
-		}
-		return p.taskName
-	}()
+
+	var msg string
+	if p.current >= p.total && p.finishMsg != nil {
+		msg = p.finishMsg(p)
+	} else {
+		msg = p.taskName
+	}
 	msgWidth := runewidth.StringWidth(msg)
-	symbol := func() string {
-		if p.current < p.total {
-			return p.symbols[p.symbolIndex]
-		} else {
-			return p.okSymbol
-		}
-	}()
+
+	var symbol string
+	if p.current < p.total {
+		symbol = p.symbols[p.symbolIndex]
+	} else {
+		symbol = p.okSymbol
+	}
 	symbolWidth := runewidth.StringWidth(symbol)
 
 	infoStrLen := runewidth.StringWidth(infoStr)
 
 	padding := strings.Repeat(" ", max(0, terminalWidth-runewidth.StringWidth(appName)-symbolWidth-msgWidth-infoStrLen-2))
 
-	// 打印进度条
-	Infof("\r%s %s %s%s", symbol, msg, padding, infoStr)
-
-	//✔ ✖
-	// [" ", "⡀", "⡄", "⡆", "⡇", "⡏", "⡟", "⡿", "⣿"]
+	return fmt.Sprintf("\r%s %s %s%s", symbol, msg, padding, infoStr)
 }

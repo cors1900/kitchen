@@ -150,7 +150,7 @@ func Zip(sources []string, target string, progress Progress) (err error) {
 			// 7. 调用 addFileToZip 函数添加文件到 ZIP
 			if err := addFileToZip(
 				filePath,
-				filepath.Join(archiveDir, relPath),
+				filepath.ToSlash(filepath.Join(archiveDir, relPath)),
 				info, writer); err != nil {
 				return errors.WithStack(err)
 			}

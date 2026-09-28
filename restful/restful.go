@@ -189,6 +189,14 @@ func Request[ResponseType any](rest *Restful, doRequest func(*Restful) (*resty.R
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	if !rest.Envolope {
+		body := new(ResponseType)
+		err := json.Unmarshal(response.Bytes(), &body)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		return body, nil
+	}
 
 	return parseResponse[ResponseType](response.Bytes())
 }
