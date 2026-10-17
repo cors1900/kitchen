@@ -47,6 +47,9 @@ func WithETA() Option                         { return func(p *ProgressBar) { p.
 func WithWidth(w int) Option                  { return func(p *ProgressBar) { p.fixedWidth = w; p.autoWidth = false } }
 func WithNewLineOnFinish(enabled bool) Option { return func(p *ProgressBar) { p.newline = enabled } }
 
+// WithOkSymbol 设置完成（current >= total）时显示的完成符号，默认 "✔"。
+func WithOkSymbol(symbol string) Option { return func(p *ProgressBar) { p.okSymbol = symbol } }
+
 func WithFinishMessage(msg func(p *ProgressBar) string) Option {
 	return func(p *ProgressBar) { p.finishMsg = msg }
 }
