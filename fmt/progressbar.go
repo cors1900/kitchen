@@ -48,7 +48,14 @@ func WithWidth(w int) Option                  { return func(p *ProgressBar) { p.
 func WithNewLineOnFinish(enabled bool) Option { return func(p *ProgressBar) { p.newline = enabled } }
 
 // WithOkSymbol 设置完成（current >= total）时显示的完成符号，默认 "✔"。
-func WithOkSymbol(symbol string) Option { return func(p *ProgressBar) { p.okSymbol = symbol } }
+func WithOkSymbol(symbol string) Option {
+	return func(p *ProgressBar) {
+		p.okSymbol = symbol
+		if len(symbol) > 0 {
+			p.okSymbol += " "
+		}
+	}
+}
 
 func WithFinishMessage(msg func(p *ProgressBar) string) Option {
 	return func(p *ProgressBar) { p.finishMsg = msg }
@@ -250,5 +257,5 @@ func (p *ProgressBar) renderLocked() string {
 
 	padding := strings.Repeat(" ", max(0, terminalWidth-runewidth.StringWidth(appName)-symbolWidth-msgWidth-infoStrLen-2))
 
-	return fmt.Sprintf("\r%s %s %s%s", symbol, msg, padding, infoStr)
+	return fmt.Sprintf("\r%s%s %s%s", symbol, msg, padding, infoStr)
 }
