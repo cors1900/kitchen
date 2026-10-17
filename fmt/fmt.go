@@ -146,14 +146,41 @@ func Fatalf(format string, args ...any) {
 	os.Exit(1)
 }
 
-func Size(s int64) string {
-	if s > 1024*1024 {
-		return fmt.Sprintf("%.1f MB", float64(s)/1024/1024)
+// Size 把字节数量格式化为可读字符串（Byte/KB/MB）。可传一个或多个值：
+// 单位由其中的最大值决定，多个值以 "/" 连接、单位统一缀在末尾。
+//
+//	Size(1536)         → "1.5 KB"
+//	Size(1, 2)         → "1/2 Byte"
+//	Size(512, 2621440) → "0.0/2.5 MB"
+func Size(sizes ...int64) string {
+	if len(sizes) == 0 {
+		return ""
 	}
-	if s > 1024 {
-		return fmt.Sprintf("%.1f KB", float64(s)/1024)
+
+	maxSize := sizes[0]
+	for _, s := range sizes[1:] {
+		if s > maxSize {
+			maxSize = s
+		}
 	}
-	return fmt.Sprintf("%d Byte", s)
+
+	unit, div := "Byte", 1.0
+	switch {
+	case maxSize > 1024*1024:
+		unit, div = "MB", 1024*1024
+	case maxSize > 1024:
+		unit, div = "KB", 1024
+	}
+
+	parts := make([]string, len(sizes))
+	for i, s := range sizes {
+		if unit == "Byte" {
+			parts[i] = fmt.Sprintf("%d", s)
+		} else {
+			parts[i] = fmt.Sprintf("%.1f", float64(s)/div)
+		}
+	}
+	return strings.Join(parts, "/") + " " + unit
 }
 
 func Duration(d time.Duration) string {
