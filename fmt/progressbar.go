@@ -48,14 +48,7 @@ func WithWidth(w int) Option                  { return func(p *ProgressBar) { p.
 func WithNewLineOnFinish(enabled bool) Option { return func(p *ProgressBar) { p.newline = enabled } }
 
 // WithOkSymbol 设置完成（current >= total）时显示的完成符号，默认 "✔"。
-func WithOkSymbol(symbol string) Option {
-	return func(p *ProgressBar) {
-		p.okSymbol = symbol
-		if len(symbol) > 0 {
-			p.okSymbol += " "
-		}
-	}
-}
+func WithOkSymbol(symbol string) Option { return func(p *ProgressBar) { p.okSymbol = symbol } }
 
 func WithFinishMessage(msg func(p *ProgressBar) string) Option {
 	return func(p *ProgressBar) { p.finishMsg = msg }
@@ -251,11 +244,16 @@ func (p *ProgressBar) renderLocked() string {
 	} else {
 		symbol = p.okSymbol
 	}
+	// 先固定 symbol 的最终输出形态：非空时带上其后的分隔空格（okSymbol 为空串则不带）。
+	if symbol != "" {
+		symbol += " "
+	}
 	symbolWidth := runewidth.StringWidth(symbol)
 
 	infoStrLen := runewidth.StringWidth(infoStr)
 
-	padding := strings.Repeat(" ", max(0, terminalWidth-runewidth.StringWidth(appName)-symbolWidth-msgWidth-infoStrLen-2))
+	// 分隔空格只剩消息与 info 之间的 1 个（symbol 后的空格已计入 symbolWidth）。
+	padding := strings.Repeat(" ", max(0, terminalWidth-runewidth.StringWidth(appName)-symbolWidth-msgWidth-infoStrLen-1))
 
 	return fmt.Sprintf("\r%s%s %s%s", symbol, msg, padding, infoStr)
 }
