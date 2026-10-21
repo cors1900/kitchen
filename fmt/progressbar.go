@@ -252,8 +252,15 @@ func (p *ProgressBar) renderLocked() string {
 
 	infoStrLen := runewidth.StringWidth(infoStr)
 
-	// 分隔空格只剩消息与 info 之间的 1 个（symbol 后的空格已计入 symbolWidth）。
-	padding := strings.Repeat(" ", max(0, terminalWidth-runewidth.StringWidth(appName)-symbolWidth-msgWidth-infoStrLen-1))
+	// 剩余可用宽度：总宽度扣除前缀、符号（含其后空格）、info 以及 msg 与 info 之间的 1 个分隔空格。
+	// msg 至少保留 10 个字符宽度（低于该值说明终端过窄）；超出时按显示宽度截断并以省略号结尾。
+	msgLimit := max(10, terminalWidth-runewidth.StringWidth(appName)-symbolWidth-infoStrLen-1)
+	if msgWidth > msgLimit {
+		msg = runewidth.Truncate(msg, msgLimit, "...")
+		msgWidth = runewidth.StringWidth(msg)
+	}
+
+	padding := strings.Repeat(" ", max(0, msgLimit-msgWidth))
 
 	return fmt.Sprintf("\r%s%s %s%s", symbol, msg, padding, infoStr)
 }
