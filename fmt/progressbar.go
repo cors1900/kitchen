@@ -69,7 +69,7 @@ func NewProgressBar(name string, opts ...Option) *ProgressBar {
 		unit:        "MB",
 		symbols:     []string{"⢿", "⣻", "⣽", "⣾", "⣷", "⣯", "⣟", "⡿"},
 		// symbols: []string{"⣎⣹", "⣇⣹", "⣏⣸", "⣏⣱", "⣏⣩", "⣏⣙", "⣏⡹", "⣏⢹", "⡏⣹", "⢏⣹", "⣋⣹", "⣍⣹"},
-		okSymbol: "✔",
+		okSymbol: "✓",
 		newline:  true,
 		stop:     make(chan bool, 1),
 	}
